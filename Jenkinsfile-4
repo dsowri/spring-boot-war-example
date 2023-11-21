@@ -8,7 +8,7 @@ pipeline {
             }
             steps {
                 // Checkout source code and build on master
-                git branch: 'main', url: 'https://github.com/dsowri/test-project-1.git'
+                git branch: 'master', url: 'https://github.com/dsowri/spring-boot-war-example.git'
                 withMaven(maven: 'Maven 3.9.5') {
                     sh 'mvn clean package'
                 }
