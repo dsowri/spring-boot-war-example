@@ -1,1 +1,53 @@
+pipeline {
+    agent any
 
+    stages {
+        stage('SCM and Build on Master') {
+            agent {
+                label "master-node"
+            }
+            steps {
+                // Checkout source code and build on master
+                git branch: 'master', url: 'https://github.com/dsowri/spring-boot-war-example.git'
+                withMaven(maven: 'Maven 3.9.5') {
+                    sh 'mvn clean package'
+                }
+                // Stash the built artifact(s)
+                stash includes: 'target/*.jar, target/*.war', name: 'my-artifacts'
+            }
+        }
+
+        stage('Snyk Test on Worker Node') {
+            agent {
+                label "worker-node-1"
+            }
+            steps {
+                script {
+                    // Unstash the built artifact(s) on the worker node
+                    unstash 'my-artifacts'
+
+                    // Run Snyk test
+                    snykSecurity failOnError: false, failOnIssues: false, snykInstallation: 'Snyk', snykTokenId: 'snyk-token-1'
+                    sh 'snyk test'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis on Worker Node') {
+            agent {
+                label "worker-node-1"
+            }
+            steps {
+                // Unstash the built artifact(s) on the worker node
+                unstash 'my-artifacts'
+                
+                // Run SonarQube analysis on worker node
+                withSonarQubeEnv('sonarqube-1') {
+                    withMaven(maven: 'Maven 3.9.5') {
+                        sh 'mvn sonar:sonar'
+                    }
+                }
+            }
+        }
+    }
+}
